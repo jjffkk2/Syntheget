@@ -17,6 +17,7 @@ from src.api.server import app
 
 client = TestClient(app)
 
+
 def test_telemetry_validator_valid():
     validator = TelemetryValidator()
     payload = {
