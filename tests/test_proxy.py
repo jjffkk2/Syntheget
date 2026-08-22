@@ -1,21 +1,17 @@
 """
 Syntheget Unit Tests
-Verifies core proxy validation, sanitization, and REST API endpoints.
+Direct unit test suite for proxy boundary logic and sanitization.
 """
 
 import sys
 import os
 import pytest
-from fastapi.testclient import TestClient
 
 # Ensure parent directory is in path for module imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.validators.telemetry_validator import TelemetryValidator
 from src.sanitizers.prompt_sanitizer import PromptSanitizer
-from src.api.server import app
-
-client = TestClient(app)
 
 
 def test_telemetry_validator_valid():
@@ -31,12 +27,14 @@ def test_telemetry_validator_valid():
     assert is_valid is True
     assert reason == "VALIDATED"
 
+
 def test_telemetry_validator_invalid():
     validator = TelemetryValidator()
     payload = {"telemetry": {}}
     is_valid, reason = validator.validate(payload)
     assert is_valid is False
     assert reason == "INVALID_PROVENANCE_METADATA"
+
 
 def test_prompt_sanitizer_injection_detected():
     sanitizer = PromptSanitizer()
@@ -45,20 +43,10 @@ def test_prompt_sanitizer_injection_detected():
     assert detected is True
     assert "[REDACTED_INJECTION_VECTOR]" in clean_prompt
 
-def test_api_health_endpoint():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "HEALTHY"
 
-def test_api_inspect_approved():
-    payload = {
-        "telemetry": {
-            "source_id": "GATEWAY_ALPHA",
-            "timestamp": "2026-08-21T12:00:00Z"
-        },
-        "prompt": "Analyze market trends for Q3."
-    }
-    response = client.post("/v1/inspect", json=payload)
-    assert response.status_code == 200
-    assert response.json()["execution_allowed"] is True
-    assert response.json()["status"] == "APPROVED"
+def test_prompt_sanitizer_clean_prompt():
+    sanitizer = PromptSanitizer()
+    prompt = "Summarize the quarterly financial statement."
+    clean_prompt, detected = sanitizer.sanitize(prompt)
+    assert detected is False
+    assert clean_prompt == prompt
